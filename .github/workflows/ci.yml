@@ -1,4 +1,52 @@
-name: CI
+# name: CI
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+
+# permissions:
+#   contents: read
+
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+#   cancel-in-progress: true
+
+# jobs:
+#   check:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 20
+#     env:
+#       CI: 'true'
+#     steps:
+#       - uses: actions/checkout@v7
+
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v7
+#         with:
+#           node-version: '24'
+#           package-manager-cache: false
+
+#       - name: Set up Bun
+#         uses: oven-sh/setup-bun@v2
+#         with:
+#           bun-version: '1.1.30'
+
+#       - name: Set up Go
+#         uses: actions/setup-go@v7
+#         with:
+#           go-version-file: apps/backend/go.mod
+#           cache: false
+
+#       - name: Install dependencies
+#         run: bun install --frozen-lockfile
+
+#       - name: Typecheck, test, vet and build
+#         run: bun run check
+
+
+name: CI (Nx Monorepo)
 
 on:
   push:
@@ -7,6 +55,7 @@ on:
   pull_request:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -14,13 +63,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  main:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       CI: 'true'
+      NX_DAEMON: 'false'
     steps:
       - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -28,8 +81,7 @@ jobs:
           node-version: '24'
           package-manager-cache: false
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.1.30'
 
@@ -40,7 +92,29 @@ jobs:
           cache: false
 
       - name: Install dependencies
+        id: install
         run: bun install --frozen-lockfile
 
-      - name: Typecheck, test, vet and build
-        run: bun run check
+      - uses: nrwl/nx-set-shas@v5
+        with:
+          main-branch-name: main
+
+      # --- ส่วนที่ปรับให้เทียบเท่าฝั่ง Standard (รันทั้ง Go และ Frontend ผ่าน Nx หรือคำสั่งตรง) ---
+      
+      - name: Test backend
+        working-directory: apps/backend
+        run: go test -race -count=1 ./...
+
+      - name: Vet and build backend
+        working-directory: apps/backend
+        run: |
+          go vet ./...
+          go build -o "$RUNNER_TEMP/todo-backend" .
+
+      # ใช้ Nx Affected เพื่อรันเฉพาะโปรเจกต์ที่แก้ไข (หัวใจความเร็วของ Nx)
+      - name: Typecheck, test, and build affected frontend
+        run: bun x nx affected -t typecheck test-ci build
+
+      - name: Nx Cloud self-healing
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: bun x bunx nx fix-ci # หรือ bun x nx fix-ci
