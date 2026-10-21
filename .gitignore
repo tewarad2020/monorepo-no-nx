@@ -1,0 +1,17 @@
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+tmp/
+out-tsc/
+.vite/
+.vitest/
+*.tsbuildinfo
+vite.config.*.timestamp*
+vitest.config.*.timestamp*
+
+# Editor and OS files
+.idea/
+.DS_Store
+Thumbs.db
+*.log

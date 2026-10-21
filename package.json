@@ -1,0 +1,47 @@
+{
+  "name": "monorepo-no-nx",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "bun@1.1.30",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "cd \"${npm_package_json%/*}\" && concurrently --kill-others --names frontend,backend \"bun run dev:frontend\" \"bun run dev:backend\"",
+    "dev:frontend": "cd \"${npm_package_json%/*}\" && vite --config apps/frontend/vite.config.mts",
+    "dev:backend": "cd \"${npm_package_json%/*}/apps/backend\" && go run .",
+    "build": "bun run build:frontend && bun run build:backend",
+    "build:frontend": "vite build --config apps/frontend/vite.config.mts",
+    "build:backend": "mkdir -p dist/backend && cd apps/backend && go build -o ../../dist/backend/todo-backend .",
+    "preview": "vite preview --config apps/frontend/vite.config.mts",
+    "typecheck": "tsc --noEmit -p apps/frontend/tsconfig.app.json && tsc --noEmit -p apps/frontend/tsconfig.spec.json",
+    "test": "bun run test:frontend && bun run test:backend",
+    "test:frontend": "vitest run --project frontend",
+    "test:frontend:watch": "vitest --project frontend --watch",
+    "test:frontend:coverage": "vitest run --project frontend --coverage",
+    "test:backend": "cd apps/backend && go test -race -count=1 ./...",
+    "vet": "cd apps/backend && go vet ./...",
+    "check": "bun run typecheck && bun run test && bun run vet && bun run build"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "6.30.3"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/react": "16.3.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "@vitest/coverage-v8": "~5.0.1",
+    "concurrently": "^9.2.1",
+    "jsdom": "^27.1.0",
+    "tslib": "^2.3.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.0",
+    "vitest": "~5.0.1"
+  }
+}
